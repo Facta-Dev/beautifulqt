@@ -1,0 +1,52 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  skill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check skill frontmatter, links and manifests
+        run: python3 scripts/check-skill.py
+
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check C++ block balance
+        run: python3 scripts/check-examples.py
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run the unittest suite
+        run: python3 -m unittest discover -s tests -t .
+
+  native:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt, CMake, clang-format and clang-tidy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build qt6-base-dev clang-format clang-tidy
+      - name: Build and test the runnable example
+        run: bash scripts/check-build.sh
+      - name: Prove the lint config fires
+        run: bash scripts/check-lints.sh

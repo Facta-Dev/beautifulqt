@@ -1,0 +1,26 @@
+# Beautiful Qt drop-in clang-format config.
+# Copy next to your CMakeLists.txt. CI runs:
+#   clang-format --dry-run --Werror <changed files>
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++20
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<Q'
+    Priority: 2
+  - Regex: '^<'
+    Priority: 3
+  - Regex: '^"'
+    Priority: 1
+SpaceAfterTemplateKeyword: false

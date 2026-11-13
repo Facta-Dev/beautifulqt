@@ -1,0 +1,60 @@
+# Beautiful Qt drop-in clang-tidy config
+#
+# Copy next to your CMakeLists.txt (or point clang-tidy at it with
+# `--config-file`). It enforces the machine-checkable half of the
+# qt-best-practices skill: lifetime and ownership bugs, blocking/threading
+# smells, modern C++, readability, and the Qt-specific checks.
+#
+# Run:
+#   clang-tidy -p build <changed sources>
+#
+# Every disabled check below is deliberate and documented. A blanket
+# `-*` or a `WarningsAsErrors: ''` is a contract change, not a convenience.
+
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  cppcoreguidelines-*,
+  qt-*,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -readability-identifier-length
+
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(src|include|examples)/.*'
+FormatStyle: file
+UseColor: false
+
+CheckOptions:
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.MethodCase
+    value: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberPrefix
+    value: m_
+  - key: readability-identifier-naming.MemberCase
+    value: camelBack
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '25'

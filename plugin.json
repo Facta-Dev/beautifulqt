@@ -1,0 +1,57 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "beautiful-qt",
+  "version": "0.1.0",
+  "description": "Write, review, port, and enforce idiomatic Qt 6 desktop applications in C++20: three skills distilled from the Qt 6 documentation, the Widgets/Quick guidance, and the facta desktop handbook, plus a drop-in clang-tidy and clang-format config.",
+  "author": {
+    "name": "Facta-Dev",
+    "url": "https://github.com/Facta-Dev"
+  },
+  "homepage": "https://github.com/Facta-Dev/beautifulqt",
+  "repository": "https://github.com/Facta-Dev/beautifulqt",
+  "license": "MIT",
+  "keywords": [
+    "best-practices",
+    "clang-format",
+    "clang-tidy",
+    "cmake",
+    "code-review",
+    "cpp",
+    "desktop",
+    "porting",
+    "qml",
+    "qt",
+    "skill",
+    "widgets"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Beautiful Qt",
+        "shortDescription": "Write, review, port Qt apps",
+        "longDescription": "Three skills for Qt 6 desktop developers on C++20, distilled from the Qt 6 documentation, the Widgets/Quick guidance, and the facta desktop handbook.\n\nqt-best-practices guides new desktop code: the sacred GUI thread, QFuture/QtConcurrent and worker threads, the domain/application/adapter/presentation/platform layers, MVVM with bindable QObject ViewModels and QAbstractItemModel, ownership and QObject lifetimes, the C++ SDK and realtime ports, SQLite and the outbox, signed updates, accessibility and the low-end performance budget.\n\nqt-review reviews a Widgets/QML screen, ViewModel, model, thread boundary, SDK/SQLite adapter, CMake target graph, or diff and returns a prioritized report. Architecture and GUI-thread contracts rank above everything. Every finding cites a file and line, the rule it breaks, and the smallest fix.\n\nqt-port ports Qt 5, QML-only, PySide/PyQt, Electron, or a web screen to Qt 6 C++ with the same behavior. It ports the original tests first and writes a PORTING.md.\n\nThe skills contain instructions and reference text only. They make no network calls and collect no data. When a Qt/C++ toolchain is available, the skills run CMake, ctest, clang-format, and clang-tidy on your project; without one, they work from the code alone. A drop-in clang-tidy and clang-format config is available in the GitHub repository.",
+        "developerName": "Facta-Dev",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Write idiomatic Qt 6 / C++20 apps",
+          "Review Qt code with cited rules",
+          "Port Qt 5, QML, PySide or web screens to Qt 6"
+        ],
+        "websiteURL": "https://github.com/Facta-Dev/beautifulqt",
+        "supportURL": "https://github.com/Facta-Dev/beautifulqt/issues",
+        "privacyPolicyURL": "https://github.com/Facta-Dev/beautifulqt/blob/main/PRIVACY.md",
+        "defaultPrompt": [
+          "Review this Qt window and list what to fix first",
+          "Port this PySide screen to idiomatic C++ Qt 6",
+          "Move this blocking call off the GUI thread"
+        ],
+        "brandColor": "#41CD52",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png"
+      },
+      "publication": {
+        "release_notes": "Initial release: three Qt 6 skills, the layer and GUI-thread contract, and a proven clang-tidy config."
+      }
+    }
+  }
+}

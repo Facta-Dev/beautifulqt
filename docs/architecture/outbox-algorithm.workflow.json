@@ -1,0 +1,143 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "beautifulqt — Offline Outbox (persisted SQLite queue)",
+    "quality_profile": "showcase",
+    "output": "outbox-algorithm.workflow.html"
+  },
+  "lanes": [
+    { "id": "view", "label": "ViewModel" },
+    { "id": "app", "label": "Application" },
+    { "id": "sqlite", "label": "SQLite (WAL)" },
+    { "id": "worker", "label": "Worker thread" },
+    { "id": "api", "label": "Backend API" }
+  ],
+  "phases": [
+    { "id": "enqueue", "label": "Optimistic write", "fromCol": 0, "toCol": 1 },
+    { "id": "drain", "label": "Drain", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "settle", "label": "Settle or restore", "fromCol": 4, "toCol": 5 }
+  ],
+  "mainPath": [
+    "mutate",
+    "enqueue",
+    "trigger",
+    "claim",
+    "send",
+    "settle"
+  ],
+  "nodes": [
+    {
+      "id": "mutate",
+      "lane": "view",
+      "col": 0,
+      "type": "frontend",
+      "label": "Edit item",
+      "sublabel": "ViewModel command"
+    },
+    {
+      "id": "enqueue",
+      "lane": "sqlite",
+      "col": 1,
+      "type": "database",
+      "label": "One transaction",
+      "sublabel": "row + queued mutation"
+    },
+    {
+      "id": "trigger",
+      "lane": "app",
+      "col": 2,
+      "type": "backend",
+      "label": "Drain trigger",
+      "sublabel": "startup · reconnect · timer"
+    },
+    {
+      "id": "claim",
+      "lane": "worker",
+      "col": 2,
+      "type": "backend",
+      "label": "Worker claims",
+      "sublabel": "QThread · pending row"
+    },
+    {
+      "id": "send",
+      "lane": "api",
+      "col": 3,
+      "type": "cloud",
+      "label": "SDK send",
+      "sublabel": "Idempotency-Key"
+    },
+    {
+      "id": "settle",
+      "lane": "sqlite",
+      "col": 5,
+      "type": "database",
+      "label": "Settle",
+      "sublabel": "server answer applied"
+    },
+    {
+      "id": "restore",
+      "lane": "app",
+      "col": 4,
+      "type": "backend",
+      "label": "Restore",
+      "sublabel": "previous value + why"
+    },
+    {
+      "id": "retry",
+      "lane": "worker",
+      "col": 4,
+      "type": "backend",
+      "label": "Backoff retry",
+      "sublabel": "bounded attempts"
+    },
+    {
+      "id": "deadletter",
+      "lane": "sqlite",
+      "col": 4,
+      "type": "database",
+      "label": "Dead letter",
+      "sublabel": "admin view"
+    }
+  ],
+  "edges": [
+    { "id": "o1", "from": "mutate", "to": "enqueue", "label": "optimistic row" },
+    { "id": "o2", "from": "enqueue", "to": "trigger", "label": "pending mutation" },
+    { "id": "o3", "from": "trigger", "to": "claim", "label": "claim pending" },
+    { "id": "o4", "from": "claim", "to": "send", "label": "POST + key" },
+    { "id": "o5", "from": "send", "to": "settle", "label": "2xx", "variant": "emphasis" },
+    { "id": "o6", "from": "send", "to": "restore", "label": "error", "variant": "dashed" },
+    { "id": "o7", "from": "restore", "to": "retry", "label": "requeue with backoff" },
+    { "id": "o8", "from": "retry", "to": "claim", "label": "next attempt", "variant": "dashed" },
+    { "id": "o9", "from": "retry", "to": "deadletter", "label": "attempts exhausted", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "The write and its queue commit together",
+      "items": [
+        "the optimistic row and the queued mutation land in one SQLite transaction — no half-written local state, no dual-write gap",
+        "the local store is a projection, not authority: the server refresh replaces it and the server resolves the conflict",
+        "the outbox is persisted, so it survives a crash, a quit and a laptop lid"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "The drain is not the GUI thread",
+      "items": [
+        "drains fire on startup, on reconnect and on a timer; the work itself runs on a worker thread — never a blocking call on the GUI thread",
+        "every send carries an idempotency key, so a retried request is applied once",
+        "the retry ladder is bounded and ends in a dead-letter view for admins, not in an infinite loop"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Failure is visible",
+      "items": [
+        "on failure the previous value is restored and the reason is shown — an error is a value, and it never crosses a layer as an exception",
+        "the ViewModel maps the outcome onto one closed status enum: Ready, Empty, Forbidden, NotFound, Offline, Error or PolicyBlocked",
+        "the SDK owns QNetworkAccessManager; the reply is aborted when a newer request supersedes it, and the stale result is dropped"
+      ]
+    }
+  ]
+}

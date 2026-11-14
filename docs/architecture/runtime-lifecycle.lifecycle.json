@@ -1,0 +1,147 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "beautifulqt — Runtime Lifecycle",
+    "quality_profile": "showcase",
+    "output": "runtime-lifecycle.lifecycle.html"
+  },
+  "mainPath": [
+    "boot",
+    "compose",
+    "mount",
+    "ready",
+    "shutdown"
+  ],
+  "states": [
+    {
+      "id": "boot",
+      "type": "start",
+      "label": "Process start",
+      "sublabel": "QApplication · platform",
+      "step": "01",
+      "tag": "entry"
+    },
+    {
+      "id": "compose",
+      "type": "active",
+      "label": "Composition root",
+      "sublabel": "app target links adapters",
+      "step": "02"
+    },
+    {
+      "id": "mount",
+      "type": "active",
+      "label": "View + ViewModel",
+      "sublabel": "route · bind · model",
+      "step": "03"
+    },
+    {
+      "id": "ready",
+      "type": "success",
+      "label": "Steady state",
+      "sublabel": "event loop · GUI thread idle",
+      "step": "04",
+      "tag": "done"
+    },
+    {
+      "id": "settle",
+      "type": "active",
+      "label": "Drain the outbox",
+      "sublabel": "worker thread · backoff"
+    },
+    {
+      "id": "shutdown",
+      "type": "success",
+      "label": "Quit",
+      "sublabel": "workers joined · keystore cleared",
+      "tag": "done"
+    },
+    {
+      "id": "second",
+      "type": "decision",
+      "label": "Second launch?",
+      "sublabel": "QLocalServer · QLocalSocket",
+      "tag": "gate"
+    },
+    {
+      "id": "forward",
+      "type": "neutral",
+      "label": "Forward the args",
+      "sublabel": "the first instance owns the UI"
+    },
+    {
+      "id": "budget",
+      "type": "decision",
+      "label": "Startup budget",
+      "sublabel": "cold start on the floor",
+      "tag": "gate"
+    },
+    {
+      "id": "overbudget",
+      "type": "failure",
+      "label": "Regression",
+      "sublabel": "CI fails the budget",
+      "tag": "terminal"
+    },
+    {
+      "id": "policy",
+      "type": "decision",
+      "label": "Managed policy",
+      "sublabel": "kill switch · forced update",
+      "tag": "gate"
+    },
+    {
+      "id": "blocked",
+      "type": "failure",
+      "label": "PolicyBlocked",
+      "sublabel": "the UI refuses the action",
+      "tag": "terminal"
+    }
+  ],
+  "transitions": [
+    { "id": "t1", "from": "boot", "to": "compose" },
+    { "id": "t2", "from": "compose", "to": "mount" },
+    { "id": "t3", "from": "mount", "to": "ready" },
+    { "id": "t4", "from": "ready", "to": "settle", "label": "user edits" },
+    { "id": "t5", "from": "settle", "to": "ready", "label": "settled", "variant": "emphasis" },
+    { "id": "t6", "from": "ready", "to": "shutdown", "label": "quit" },
+    { "id": "t7", "from": "boot", "to": "second", "variant": "dashed" },
+    { "id": "t8", "from": "second", "to": "forward", "variant": "dashed" },
+    { "id": "t9", "from": "second", "to": "compose", "label": "first instance", "variant": "dashed" },
+    { "id": "t10", "from": "compose", "to": "budget", "variant": "dashed" },
+    { "id": "t11", "from": "budget", "to": "overbudget", "variant": "dashed", "label": "over budget" },
+    { "id": "t12", "from": "ready", "to": "policy", "variant": "security" },
+    { "id": "t13", "from": "policy", "to": "blocked", "variant": "security", "label": "kill switch" },
+    { "id": "t14", "from": "policy", "to": "ready", "variant": "security", "label": "policy allows" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Boot is sequential",
+      "items": [
+        "the app target is the composition root: it links the adapters, builds the ViewModels and resolves the ports — nothing else wires anything",
+        "QApplication comes up first, then the platform adapters, then the shell; a second launch forwards its arguments through QLocalServer and exits",
+        "the startup path is measured on the reference floor machine: cold start, screen switch, scroll FPS and memory are budgets, and a regression fails CI"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "The GUI thread is idle",
+      "items": [
+        "the steady state is an event loop that does no work: network, disk, parse and crypto all run on a worker thread and come back through queued connections",
+        "the model is updated on its own thread; a background fetch returns data and the ViewModel applies it on the GUI thread",
+        "a newer request supersedes the older one and the stale result is dropped by the request-id guard"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Shutdown is explicit",
+      "items": [
+        "quit joins the worker threads and flushes the outbox so a queued mutation is not lost",
+        "sign-out and tenant switch clear the keystore and the SQLite rows in the same operation",
+        "managed policy is read on a policy event and applied immediately: the kill switch turns into a PolicyBlocked status, not a silent no-op"
+      ]
+    }
+  ]
+}

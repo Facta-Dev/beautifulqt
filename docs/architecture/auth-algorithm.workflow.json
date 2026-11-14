@@ -1,0 +1,143 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "beautifulqt — Trust Algorithm (OS keystore + OIDC/PKCE)",
+    "quality_profile": "showcase",
+    "output": "auth-algorithm.workflow.html"
+  },
+  "lanes": [
+    { "id": "user", "label": "Operator" },
+    { "id": "app", "label": "Desktop app" },
+    { "id": "browser", "label": "System browser" },
+    { "id": "api", "label": "Backend API" },
+    { "id": "keystore", "label": "OS keystore" }
+  ],
+  "phases": [
+    { "id": "start", "label": "Start", "fromCol": 0, "toCol": 1 },
+    { "id": "authorize", "label": "Authorize + exchange", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "refresh", "label": "Store + refresh", "fromCol": 4, "toCol": 5 }
+  ],
+  "mainPath": [
+    "signin",
+    "verifier",
+    "authorize",
+    "code",
+    "token",
+    "store",
+    "refresh"
+  ],
+  "nodes": [
+    {
+      "id": "signin",
+      "lane": "user",
+      "col": 0,
+      "type": "frontend",
+      "label": "Sign in",
+      "sublabel": "View → ViewModel"
+    },
+    {
+      "id": "verifier",
+      "lane": "app",
+      "col": 0,
+      "type": "backend",
+      "label": "Start auth",
+      "sublabel": "PKCE verifier + state"
+    },
+    {
+      "id": "authorize",
+      "lane": "browser",
+      "col": 2,
+      "type": "external",
+      "label": "Authorize",
+      "sublabel": "system browser · no secret"
+    },
+    {
+      "id": "code",
+      "lane": "app",
+      "col": 3,
+      "type": "backend",
+      "label": "Redirect back",
+      "sublabel": "loopback · custom scheme"
+    },
+    {
+      "id": "token",
+      "lane": "api",
+      "col": 3,
+      "type": "cloud",
+      "label": "Token endpoint",
+      "sublabel": "code + verifier"
+    },
+    {
+      "id": "store",
+      "lane": "keystore",
+      "col": 4,
+      "type": "security",
+      "label": "SecretStorePort",
+      "sublabel": "Credential Mgr · Keychain · libsecret"
+    },
+    {
+      "id": "refresh",
+      "lane": "app",
+      "col": 5,
+      "type": "backend",
+      "label": "Refresh",
+      "sublabel": "reuse detection"
+    },
+    {
+      "id": "revoke",
+      "lane": "api",
+      "col": 5,
+      "type": "security",
+      "label": "Revoke family",
+      "sublabel": "reuse → revoke"
+    },
+    {
+      "id": "policy",
+      "lane": "app",
+      "col": 1,
+      "type": "security",
+      "label": "Policy check",
+      "sublabel": "managed policy wins"
+    }
+  ],
+  "edges": [
+    { "id": "a1", "from": "signin", "to": "verifier" },
+    { "id": "a2", "from": "verifier", "to": "authorize", "label": "system browser" },
+    { "id": "a3", "from": "authorize", "to": "code", "label": "code + state" },
+    { "id": "a4", "from": "code", "to": "token", "label": "code + PKCE verifier" },
+    { "id": "a5", "from": "token", "to": "store", "label": "access + refresh token", "variant": "security" },
+    { "id": "a6", "from": "store", "to": "refresh", "label": "read on demand" },
+    { "id": "a7", "from": "refresh", "to": "revoke", "label": "reuse detected", "variant": "security" },
+    { "id": "a8", "from": "policy", "to": "verifier", "label": "kill switch → PolicyBlocked", "variant": "dashed" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "The keystore is the only secret store",
+      "items": [
+        "tokens live behind SecretStorePort — Windows Credential Manager, macOS Keychain, libsecret — and nowhere else",
+        "SQLite, config, logs, crash dumps and the binary hold no token: a secret in SQLite or a log is a breach on a shared machine",
+        "sign-out and tenant switch clear the keystore and the SQLite rows in the same operation"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "OIDC + PKCE in the system browser",
+      "items": [
+        "the app never sees the password: it opens the system browser with a PKCE verifier and a state value, and receives a loopback or custom-scheme redirect",
+        "the authorization code plus the verifier go to the token endpoint; the exchange happens off the GUI thread, never as a blocking call",
+        "the refresh token rotates with reuse detection: a replayed token revokes the whole family and the ViewModel lands on a Forbidden/Error status"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Policy beats the user",
+      "items": [
+        "managed policy wins over user settings, and a kill switch applies immediately — the ViewModel surfaces PolicyBlocked, one of the eight status values",
+        "authorization is server-side: the UI hides actions, it never decides access",
+        "TLS is always on with a custom CA bundle where an enterprise requires it; there is no --insecure default"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "beautifulqt — Layers, Slices & Dependency Walls",
+    "quality_profile": "showcase",
+    "output": "services-slices.architecture.html"
+  },
+  "components": [
+    {
+      "id": "views",
+      "type": "frontend",
+      "label": "presentation/views",
+      "sublabel": "Widgets · QML",
+      "pos": [40, 90],
+      "size": [130, 64]
+    },
+    {
+      "id": "viewmodels",
+      "type": "frontend",
+      "label": "presentation/viewmodels",
+      "sublabel": "QObject · one status enum",
+      "pos": [280, 90],
+      "size": [150, 64]
+    },
+    {
+      "id": "application",
+      "type": "backend",
+      "label": "application",
+      "sublabel": "use cases · ports · outbox",
+      "pos": [280, 270],
+      "size": [160, 64]
+    },
+    {
+      "id": "domain",
+      "type": "backend",
+      "label": "domain",
+      "sublabel": "entities · rules · events",
+      "pos": [540, 270],
+      "size": [150, 64]
+    },
+    {
+      "id": "kernel",
+      "type": "backend",
+      "label": "shared-kernel",
+      "sublabel": "value types",
+      "pos": [790, 270],
+      "size": [160, 64]
+    },
+    {
+      "id": "adapters-in",
+      "type": "backend",
+      "label": "adapters/in",
+      "sublabel": "realtime + OS events",
+      "pos": [40, 460],
+      "size": [150, 64]
+    },
+    {
+      "id": "adapters-out",
+      "type": "backend",
+      "label": "adapters/out",
+      "sublabel": "SDK · SQLite · keystore",
+      "pos": [540, 460],
+      "size": [160, 64]
+    },
+    {
+      "id": "platform",
+      "type": "backend",
+      "label": "platform",
+      "sublabel": "the only #ifdef Q_OS_*",
+      "pos": [790, 460],
+      "size": [150, 64]
+    },
+    {
+      "id": "contracts",
+      "type": "backend",
+      "label": "contracts",
+      "sublabel": "DTOs · error codes · envelope",
+      "pos": [280, 650],
+      "size": [160, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Presentation — binds the ViewModel, never the SDK, storage or network",
+      "wraps": ["views", "viewmodels"]
+    },
+    {
+      "kind": "region",
+      "label": "domain + application — no QtGui, Widgets, Quick, Network or Sql",
+      "wraps": ["application", "domain"]
+    },
+    {
+      "kind": "region",
+      "label": "Adapters — the only layer that touches the SDK, storage or network",
+      "wraps": ["adapters-in", "adapters-out"]
+    },
+    {
+      "kind": "region",
+      "label": "platform — per-OS code, consumed by the adapters",
+      "wraps": ["platform"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "s1",
+      "from": "views",
+      "to": "viewmodels",
+      "label": "bind"
+    },
+    {
+      "id": "s2",
+      "from": "viewmodels",
+      "to": "application",
+      "label": "use cases"
+    },
+    {
+      "id": "s3",
+      "from": "application",
+      "to": "domain",
+      "label": "entities"
+    },
+    {
+      "id": "s4",
+      "from": "domain",
+      "to": "kernel",
+      "label": "value types"
+    },
+    {
+      "id": "s5",
+      "from": "adapters-out",
+      "to": "application",
+      "label": "implement ports",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "s6",
+      "from": "adapters-in",
+      "to": "application",
+      "label": "OS events",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "s7",
+      "from": "adapters-out",
+      "to": "platform",
+      "label": "OS APIs"
+    },
+    {
+      "id": "s8",
+      "from": "application",
+      "to": "contracts",
+      "label": "DTOs · error codes",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One slice = one backend slice",
+      "items": [
+        "slice folders are fixed: domain/ · application/ · adapters/{in,out}/ · presentation/{viewmodels,views}/ · contracts/",
+        "the same name appears in the folder, the URL module, the permission prefix, the realtime topic and the tests — a slice never imports another slice's internals",
+        "shared behaviour moves into shared-kernel or behind a port; composition happens once, in the composition root"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Ports, not imports",
+      "items": [
+        "the consumer declares the port, the adapter implements it: SessionPort, SecretStorePort, RealtimePort, PolicyPort, ClockPort, NotifierPort, NavigatorPort, UpdaterPort",
+        "ports return QFuture<Result<T>> — errors are values, exceptions never cross a layer or a slot boundary",
+        "the ViewModel talks to use cases and to the Navigator/Notifier ports; it never holds a widget or a window pointer"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "The CMake graph is the law",
+      "items": [
+        "one target per layer and slice: domain_<slice>, application_<slice>, adapter_<slice>, viewmodel_<slice>, view_<slice>, plus platform and contracts",
+        "target_link_libraries lists only the allowed targets, so a layer violation fails at link time instead of in review",
+        "the composition root is a single app target that links the adapters and builds the ViewModels"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "The walls CI enforces",
+      "items": [
+        "domain and application do not include QtGui, Widgets, Quick, Network or Sql — the CMake link graph plus the clang-tidy include checks",
+        "#ifdef Q_OS_* appears only under platform/ — a grep gate in CI",
+        "views do not include the SDK, storage or network — the CMake target graph; a NOLINT without a reason is itself a review finding"
+      ]
+    }
+  ]
+}

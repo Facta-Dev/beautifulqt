@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "beautifulqt — Trust Sequence (sign-in + refresh)",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "signin",
+        "label": "Sign in",
+        "focus": ["view", "app", "browser", "api", "keystore"],
+        "note": "PKCE in the system browser, tokens into the OS keystore"
+      },
+      {
+        "id": "refresh",
+        "label": "Refresh",
+        "focus": ["app", "api", "keystore"],
+        "note": "a reused refresh token revokes the family instead of silently succeeding"
+      }
+    ],
+    "output": "auth-sequence.sequence.html"
+  },
+  "participants": [
+    {
+      "id": "view",
+      "type": "external",
+      "label": "Operator",
+      "sublabel": "Widget · QML"
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "Desktop app",
+      "sublabel": "ViewModel · use case"
+    },
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "System browser",
+      "sublabel": "OIDC · PKCE"
+    },
+    {
+      "id": "api",
+      "type": "cloud",
+      "label": "Backend API",
+      "sublabel": "token endpoint"
+    },
+    {
+      "id": "keystore",
+      "type": "security",
+      "label": "OS keystore",
+      "sublabel": "SecretStorePort"
+    }
+  ],
+  "segments": [
+    { "from": 146, "to": 300, "label": "Authorize — nothing secret in the app yet" },
+    { "from": 322, "to": 452, "label": "Exchange and store" },
+    { "from": 474, "to": 670, "label": "Refresh with reuse detection" }
+  ],
+  "messages": [
+    {
+      "id": "m1",
+      "from": "view",
+      "to": "app",
+      "y": 164,
+      "label": "Sign in",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m2",
+      "from": "app",
+      "to": "browser",
+      "y": 196,
+      "label": "Open authorize URL — PKCE verifier + state"
+    },
+    {
+      "id": "m3",
+      "from": "browser",
+      "to": "api",
+      "y": 228,
+      "label": "Credentials stay in the browser"
+    },
+    {
+      "id": "m4",
+      "from": "api",
+      "to": "browser",
+      "y": 260,
+      "label": "Authorization code",
+      "variant": "return"
+    },
+    {
+      "id": "m5",
+      "from": "browser",
+      "to": "app",
+      "y": 292,
+      "label": "Loopback redirect — code + state",
+      "variant": "return"
+    },
+    {
+      "id": "m6",
+      "from": "app",
+      "to": "api",
+      "y": 336,
+      "label": "POST token — code + PKCE verifier",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m7",
+      "from": "api",
+      "to": "app",
+      "y": 368,
+      "label": "Access + refresh token",
+      "variant": "return"
+    },
+    {
+      "id": "m8",
+      "from": "app",
+      "to": "keystore",
+      "y": 400,
+      "label": "write — SecretStorePort",
+      "variant": "security"
+    },
+    {
+      "id": "m9",
+      "from": "keystore",
+      "to": "app",
+      "y": 432,
+      "label": "stored — nothing in SQLite or logs",
+      "variant": "return"
+    },
+    {
+      "id": "m10",
+      "from": "app",
+      "to": "view",
+      "y": 464,
+      "label": "Status Ready — signed in",
+      "variant": "return"
+    },
+    {
+      "id": "m11",
+      "from": "app",
+      "to": "keystore",
+      "y": 502,
+      "label": "read refresh token"
+    },
+    {
+      "id": "m12",
+      "from": "app",
+      "to": "api",
+      "y": 534,
+      "label": "POST refresh — rotating token"
+    },
+    {
+      "id": "m13",
+      "from": "api",
+      "to": "app",
+      "y": 566,
+      "label": "New refresh token",
+      "variant": "return"
+    },
+    {
+      "id": "m14",
+      "from": "app",
+      "to": "keystore",
+      "y": 598,
+      "label": "replace — old token gone",
+      "variant": "security"
+    },
+    {
+      "id": "m15",
+      "from": "app",
+      "to": "api",
+      "y": 630,
+      "label": "Reused token — revoke the family",
+      "variant": "security"
+    },
+    {
+      "id": "m16",
+      "from": "api",
+      "to": "app",
+      "y": 662,
+      "label": "revoked — Status Forbidden",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    { "participant": "app", "from": 158, "to": 670, "type": "backend" },
+    { "participant": "browser", "from": 190, "to": 298, "type": "external" },
+    { "participant": "api", "from": 222, "to": 266, "type": "cloud" },
+    { "participant": "api", "from": 330, "to": 374, "type": "cloud" },
+    { "participant": "keystore", "from": 394, "to": 438, "type": "security" },
+    { "participant": "keystore", "from": 496, "to": 604, "type": "security" },
+    { "participant": "api", "from": 528, "to": 572, "type": "cloud" },
+    { "participant": "api", "from": 624, "to": 668, "type": "cloud" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "The password never enters the app",
+      "items": [
+        "the app opens the system browser with a PKCE verifier and a state value, and receives a loopback or custom-scheme redirect",
+        "the authorization code plus the verifier go to the token endpoint; nothing is typed into the desktop app"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "One secret store",
+      "items": [
+        "the access and refresh tokens are written through SecretStorePort — Windows Credential Manager, macOS Keychain, libsecret",
+        "SQLite, config, logs, crash dumps and the binary hold no token; sign-out and tenant switch clear the keystore"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Rotation and reuse detection",
+      "items": [
+        "each refresh rotates the token and replaces the stored copy — the old one is gone",
+        "a reused refresh token revokes the whole family and the ViewModel shows a Forbidden status instead of silently succeeding"
+      ]
+    }
+  ]
+}

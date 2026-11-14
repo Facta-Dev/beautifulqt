@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "beautifulqt — Offline Outbox Sequence (SQLite drain)",
+    "quality_profile": "showcase",
+    "output": "outbox-sequence.sequence.html"
+  },
+  "participants": [
+    { "id": "view", "type": "external", "label": "ViewModel", "sublabel": "Widgets · QML" },
+    { "id": "app", "type": "backend", "label": "Application", "sublabel": "use case · outbox" },
+    { "id": "sqlite", "type": "database", "label": "SQLite (WAL)", "sublabel": "projection + outbox" },
+    { "id": "worker", "type": "backend", "label": "Worker thread", "sublabel": "drain · SDK adapter" },
+    { "id": "api", "type": "cloud", "label": "Backend API", "sublabel": "source of truth" }
+  ],
+  "segments": [
+    { "from": 146, "to": 292, "label": "Optimistic write + queue, one transaction" },
+    { "from": 314, "to": 470, "label": "Drain on a worker thread" },
+    { "from": 492, "to": 700, "label": "Settle, restore, retry, dead-letter" }
+  ],
+  "messages": [
+    {
+      "id": "q1",
+      "from": "view",
+      "to": "app",
+      "y": 164,
+      "label": "Edit item — command",
+      "variant": "emphasis"
+    },
+    {
+      "id": "q2",
+      "from": "app",
+      "to": "sqlite",
+      "y": 196,
+      "label": "BEGIN — write row + queue mutation (one transaction)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "q3",
+      "from": "sqlite",
+      "to": "app",
+      "y": 228,
+      "label": "COMMIT — optimistic state + pending mutation",
+      "variant": "return"
+    },
+    {
+      "id": "q4",
+      "from": "app",
+      "to": "view",
+      "y": 260,
+      "label": "Model updated on the GUI thread",
+      "variant": "return"
+    },
+    {
+      "id": "q5",
+      "from": "worker",
+      "to": "sqlite",
+      "y": 328,
+      "label": "Claim pending mutation — startup · reconnect · timer"
+    },
+    {
+      "id": "q6",
+      "from": "sqlite",
+      "to": "worker",
+      "y": 360,
+      "label": "Row + Idempotency-Key",
+      "variant": "return"
+    },
+    {
+      "id": "q7",
+      "from": "worker",
+      "to": "api",
+      "y": 392,
+      "label": "POST mutation — SDK adapter"
+    },
+    {
+      "id": "q8",
+      "from": "api",
+      "to": "worker",
+      "y": 424,
+      "label": "2xx — server row",
+      "variant": "return"
+    },
+    {
+      "id": "q9",
+      "from": "worker",
+      "to": "sqlite",
+      "y": 456,
+      "label": "Settle — apply the answer, drop the queue row"
+    },
+    {
+      "id": "q10",
+      "from": "worker",
+      "to": "api",
+      "y": 506,
+      "label": "POST mutation — retry with backoff",
+      "variant": "dashed"
+    },
+    {
+      "id": "q11",
+      "from": "api",
+      "to": "worker",
+      "y": 538,
+      "label": "4xx / 5xx",
+      "variant": "return"
+    },
+    {
+      "id": "q12",
+      "from": "worker",
+      "to": "sqlite",
+      "y": 570,
+      "label": "Restore the previous value + record the reason"
+    },
+    {
+      "id": "q13",
+      "from": "worker",
+      "to": "sqlite",
+      "y": 602,
+      "label": "Requeue with backoff — attempts + 1"
+    },
+    {
+      "id": "q14",
+      "from": "worker",
+      "to": "sqlite",
+      "y": 634,
+      "label": "Attempts exhausted — dead letter"
+    },
+    {
+      "id": "q15",
+      "from": "worker",
+      "to": "view",
+      "y": 666,
+      "label": "Queued status — Status Offline",
+      "variant": "dashed"
+    }
+  ],
+  "activations": [
+    { "participant": "app", "from": 158, "to": 268, "type": "backend" },
+    { "participant": "sqlite", "from": 190, "to": 234, "type": "database" },
+    { "participant": "worker", "from": 322, "to": 674, "type": "backend" },
+    { "participant": "sqlite", "from": 322, "to": 366, "type": "database" },
+    { "participant": "api", "from": 386, "to": 430, "type": "cloud" },
+    { "participant": "sqlite", "from": 450, "to": 462, "type": "database" },
+    { "participant": "api", "from": 500, "to": 544, "type": "cloud" },
+    { "participant": "sqlite", "from": 564, "to": 640, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Write and queue together",
+      "items": [
+        "the optimistic row and the queued mutation commit in one SQLite transaction — no half-written local state",
+        "the local store is a projection: the server answer replaces it and the server resolves conflicts"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "The drain is off the GUI thread",
+      "items": [
+        "drains fire on startup, on reconnect and on a timer; the work runs on a worker thread and the model is updated back on the GUI thread",
+        "each send carries an Idempotency-Key, so a retry applies once",
+        "the reply is aborted when a newer request supersedes it, and a stale result is dropped by the request-id guard"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Failure is a value",
+      "items": [
+        "on error the previous value is restored and the reason is recorded — no exception crosses a slot or a layer",
+        "the retry ladder is bounded and ends in a dead-letter row an admin can inspect",
+        "the ViewModel shows one closed status — Offline, Error or Forbidden — never a silent empty list"
+      ]
+    }
+  ]
+}

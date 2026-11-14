@@ -130,6 +130,28 @@ The unbreakable rules:
 4. ViewModels never touch widgets or windows; navigation is by route.
 5. Errors are values; exceptions do not cross layers.
 
+## Architecture diagrams
+
+The repository ships eight [Archify](https://github.com/tt-a1i/archify) diagrams under
+[`docs/architecture/`](docs/architecture/README.md), each a standalone HTML page you can
+open in a browser — inline SVG, dark/light themes, live motion — with its source JSON
+next to it.
+
+| Diagram | Type | HTML |
+|---|---|---|
+| Container architecture | architecture | [c4-containers.html](docs/architecture/c4-containers.html) |
+| Layers, slices & dependency walls | architecture | [services-slices.architecture.html](docs/architecture/services-slices.architecture.html) |
+| Trust algorithm (OS keystore + OIDC/PKCE) | workflow | [auth-algorithm.workflow.html](docs/architecture/auth-algorithm.workflow.html) |
+| Offline outbox algorithm | workflow | [outbox-algorithm.workflow.html](docs/architecture/outbox-algorithm.workflow.html) |
+| Trust sequence | sequence | [auth-sequence.sequence.html](docs/architecture/auth-sequence.sequence.html) |
+| Offline outbox sequence | sequence | [outbox-sequence.sequence.html](docs/architecture/outbox-sequence.sequence.html) |
+| Dataflow (local state, secrets, API) | dataflow | [database-dataflow.dataflow.html](docs/architecture/database-dataflow.dataflow.html) |
+| Runtime lifecycle | lifecycle | [runtime-lifecycle.lifecycle.html](docs/architecture/runtime-lifecycle.lifecycle.html) |
+
+The full index — what each diagram shows, and how the `auth`, `outbox` and
+`database-dataflow` roles are adapted for a desktop client — is in
+[`docs/architecture/README.md`](docs/architecture/README.md).
+
 ## The lints config
 
 [`lints/.clang-tidy`](lints/.clang-tidy) and
@@ -181,6 +203,9 @@ tests/                 validator, wording, lints-config and gate tests
 examples/
   minimal/             a runnable Qt Widgets example + QTest
   review-inventory.md  a full worked review
+docs/
+  architecture/        eight Archify diagrams (C4, slices, auth,
+                       outbox, dataflow, lifecycle) + their index
 ```
 
 ## Sources

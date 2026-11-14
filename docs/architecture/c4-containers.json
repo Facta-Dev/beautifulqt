@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "beautifulqt — Container Architecture",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "all",
+        "label": "All",
+        "focus": [
+          "operator",
+          "qtapp",
+          "keystore",
+          "sqlite",
+          "api",
+          "browser",
+          "policy",
+          "tray"
+        ],
+        "note": "one desktop process, one GUI thread, one storage adapter — the backend stays the source of truth"
+      },
+      {
+        "id": "trust",
+        "label": "Trust",
+        "focus": [
+          "qtapp",
+          "keystore",
+          "browser",
+          "api",
+          "policy"
+        ],
+        "note": "tokens live in the OS keystore; the browser carries OIDC + PKCE; policy beats user settings"
+      },
+      {
+        "id": "state",
+        "label": "State",
+        "focus": [
+          "qtapp",
+          "sqlite",
+          "api",
+          "tray"
+        ],
+        "note": "SQLite is a projection with a persisted outbox; the API is the authority"
+      }
+    ],
+    "output": "c4-containers.html"
+  },
+  "components": [
+    {
+      "id": "api",
+      "type": "cloud",
+      "label": "Backend API",
+      "sublabel": "source of truth",
+      "pos": [40, 80],
+      "size": [150, 60]
+    },
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "System browser",
+      "sublabel": "OIDC + PKCE",
+      "pos": [40, 250],
+      "size": [150, 60]
+    },
+    {
+      "id": "policy",
+      "type": "external",
+      "label": "Managed policy",
+      "sublabel": "admin · kill switch",
+      "pos": [40, 420],
+      "size": [150, 60]
+    },
+    {
+      "id": "keystore",
+      "type": "security",
+      "label": "OS keystore",
+      "sublabel": "tokens only",
+      "pos": [330, 80],
+      "size": [180, 60]
+    },
+    {
+      "id": "qtapp",
+      "type": "frontend",
+      "label": "Qt 6 desktop app",
+      "sublabel": "GUI thread + worker pool",
+      "pos": [330, 250],
+      "size": [180, 80]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite (WAL)",
+      "sublabel": "projection + outbox",
+      "pos": [330, 430],
+      "size": [180, 60]
+    },
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "Operator",
+      "sublabel": "desktop user",
+      "pos": [640, 250],
+      "size": [140, 60]
+    },
+    {
+      "id": "tray",
+      "type": "external",
+      "label": "OS tray / toast",
+      "sublabel": "NotifierPort",
+      "pos": [640, 430],
+      "size": [140, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "The desktop app — one process; the GUI thread never blocks",
+      "wraps": ["qtapp"]
+    },
+    {
+      "kind": "region",
+      "label": "Local disk — a projection, never the authority",
+      "wraps": ["sqlite"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "k1",
+      "from": "operator",
+      "to": "qtapp",
+      "label": "click · type",
+      "variant": "emphasis"
+    },
+    {
+      "id": "k2",
+      "from": "qtapp",
+      "to": "api",
+      "label": "HTTPS via the SDK adapter",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "k3",
+      "from": "qtapp",
+      "to": "browser",
+      "label": "OIDC + PKCE",
+      "variant": "security",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "k4",
+      "from": "qtapp",
+      "to": "keystore",
+      "label": "SecretStorePort",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "k5",
+      "from": "qtapp",
+      "to": "sqlite",
+      "label": "one storage adapter",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "k6",
+      "from": "qtapp",
+      "to": "tray",
+      "label": "NotifierPort",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "k7",
+      "from": "policy",
+      "to": "qtapp",
+      "label": "policy wins",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One process, one GUI thread",
+      "items": [
+        "the shipped container is a single Qt 6 process: a Widgets or QML shell on the GUI thread plus a worker pool for anything that can block",
+        "the GUI thread never blocks — no synchronous network, disk, parse or crypto; one-shot work rides QFuture/QtConcurrent, long-lived work a QObject on a QThread, bounded work a QThreadPool",
+        "the desktop holds a cache and an outbox; the backend stays the source of truth, and a server refresh replaces the local projection"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "The local machine is untrusted",
+      "items": [
+        "secrets live in the OS keystore behind SecretStorePort (Windows Credential Manager, macOS Keychain, libsecret); SQLite, config, logs and crash dumps hold none",
+        "OIDC + PKCE runs in the system browser with a loopback or custom-scheme redirect; the refresh token rotates with reuse detection",
+        "updates are signed, TLS is always on, and managed policy beats user settings — a kill switch applies immediately"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "The three skills",
+      "items": [
+        "qt-best-practices loads on every Qt edit and carries the stack contract digest (references/qt-architecture.md, qt6.md, qt-patterns.md, cpp-strict.md)",
+        "qt-review writes a prioritized report where every finding cites the file, the rule it breaks and the smallest fix; a broken architecture contract outranks everything",
+        "qt-port ports Qt 5, QML-only, PySide/PyQt, Electron or a web screen to Qt 6 C++, porting the original tests first"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "The gates that keep the contract",
+      "items": [
+        "lints/.clang-tidy (bugprone-, performance-, modernize-, readability-, a reviewed cppcoreguidelines- subset and qt-*) and lints/.clang-format are the copy-in unit; CI runs them --dry-run --Werror",
+        "lints/check/ holds deliberate violations next to a clean control, so the config proves it fires and the clean file stays quiet",
+        "CI runs four jobs: check-skill.py (frontmatter, links, manifests), check-examples.py (C++ block balance), the unittest suite under tests/, and check-build.sh + check-lints.sh on a pinned Qt toolchain"
+      ]
+    }
+  ]
+}

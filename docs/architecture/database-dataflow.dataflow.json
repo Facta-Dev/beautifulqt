@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "beautifulqt — Dataflow: local state, secrets and the API",
+    "quality_profile": "showcase",
+    "output": "database-dataflow.dataflow.html"
+  },
+  "stages": [
+    { "label": "Views" },
+    { "label": "Application" },
+    { "label": "Local state" },
+    { "label": "Keystore" },
+    { "label": "Backend API" }
+  ],
+  "nodes": [
+    {
+      "id": "viewmodel",
+      "type": "frontend",
+      "label": "ViewModel",
+      "sublabel": "state + commands",
+      "stage": 0,
+      "row": 1
+    },
+    {
+      "id": "usecase",
+      "type": "backend",
+      "label": "Use cases",
+      "sublabel": "ports · policy · sync",
+      "stage": 1,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "projection",
+      "type": "database",
+      "label": "SQLite projection",
+      "sublabel": "cached rows · WAL",
+      "stage": 2,
+      "row": 0
+    },
+    {
+      "id": "outbox",
+      "type": "database",
+      "label": "SQLite outbox",
+      "sublabel": "pending mutations",
+      "stage": 2,
+      "row": 2
+    },
+    {
+      "id": "config",
+      "type": "database",
+      "label": "Config files",
+      "sublabel": "preferences · no secrets",
+      "stage": 2,
+      "row": 4
+    },
+    {
+      "id": "keystore",
+      "type": "security",
+      "label": "OS keystore",
+      "sublabel": "tokens only",
+      "stage": 3,
+      "row": 3
+    },
+    {
+      "id": "api",
+      "type": "cloud",
+      "label": "Backend API",
+      "sublabel": "source of truth",
+      "stage": 4,
+      "row": 1
+    }
+  ],
+  "flows": [
+    {
+      "id": "df1",
+      "from": "viewmodel",
+      "to": "usecase",
+      "label": "command · status",
+      "labelDy": 54
+    },
+    {
+      "id": "df2",
+      "from": "usecase",
+      "to": "projection",
+      "label": "read cache"
+    },
+    {
+      "id": "df3",
+      "from": "usecase",
+      "to": "outbox",
+      "label": "queue mutation",
+      "variant": "emphasis"
+    },
+    {
+      "id": "df4",
+      "from": "usecase",
+      "to": "config",
+      "label": "read preferences",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "df5",
+      "from": "usecase",
+      "to": "keystore",
+      "label": "SecretStorePort",
+      "variant": "security"
+    },
+    {
+      "id": "df6",
+      "from": "usecase",
+      "to": "api",
+      "label": "HTTPS via the SDK",
+      "variant": "emphasis",
+      "route": "straight"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "The local store is a projection",
+      "items": [
+        "SQLite (WAL) through one storage adapter with a single connection/thread policy — the local rows are a cache, never the authority",
+        "a server refresh replaces the projection; the server resolves a conflict and the rejected local change is shown, not hidden",
+        "config files hold preferences and window state; like SQLite they hold no secret"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Secrets live elsewhere",
+      "items": [
+        "tokens go through SecretStorePort into the OS keystore — Windows Credential Manager, macOS Keychain, libsecret",
+        "SQLite, config, logs, crash dumps and the binary hold no token; sign-out and tenant switch clear the keystore and the SQLite rows together"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "The outbox is durable local state",
+      "items": [
+        "a queued mutation is a row in the same SQLite database as the optimistic data — it survives a crash and a quit",
+        "drains run on startup, on reconnect and on a timer, always off the GUI thread, each send carrying an idempotency key",
+        "the retry ladder is bounded and ends in a dead-letter row for admins"
+      ]
+    }
+  ]
+}

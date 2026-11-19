@@ -15,6 +15,11 @@ description: >-
 
 # Qt best practices
 
+> Playbook set: start with [`PLAYBOOK_MASTER.md`](https://github.com/Facta-Dev/ai-coding-playbook/blob/main/PLAYBOOK_MASTER.md) —
+> the catalog, precedence and cross-playbook invariants — then
+> [`PLAYBOOK_DESKTOP_QT.md`](https://github.com/Facta-Dev/ai-coding-playbook/blob/main/PLAYBOOK_DESKTOP_QT.md). This skill is the runnable companion of that
+> contract.
+
 Distilled from the Qt 6 documentation, the Widgets/Quick guidance, and the
 facta desktop handbook (`PLAYBOOK_DESKTOP_QT.md`). The digests live in
 `references/`; where they disagree, this file says which to follow and why.

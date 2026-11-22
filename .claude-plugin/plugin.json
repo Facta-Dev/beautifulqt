@@ -1,6 +1,6 @@
 {
   "name": "beautiful-qt",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Write, review, port, and enforce idiomatic Qt 6 desktop applications in C++20: three skills distilled from the Qt 6 documentation, the Widgets/Quick guidance, and the facta desktop handbook, plus a drop-in clang-tidy and clang-format config.",
   "license": "MIT",
   "author": {
